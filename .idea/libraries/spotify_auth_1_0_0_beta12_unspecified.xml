@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="spotify-auth-1.0.0-beta12-unspecified">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/app/build/intermediates/exploded-aar/Empa-Moodify/spotify-auth-1.0.0-beta12/unspecified/res" />
+      <root url="jar://$PROJECT_DIR$/app/build/intermediates/exploded-aar/Empa-Moodify/spotify-auth-1.0.0-beta12/unspecified/jars/classes.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
