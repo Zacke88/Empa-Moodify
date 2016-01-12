@@ -244,7 +244,6 @@ public class MainActivity extends Activity implements
         Log.e("MainActivity", "Received connection message: " + message);
     }
 
-    // TODO Byt inte låt i slutet av playlist
     @Override
     public void onPlaybackEvent(EventType eventType, PlayerState playerState) {
         Log.d("MainActivity", "Playback event received: " + eventType.name());

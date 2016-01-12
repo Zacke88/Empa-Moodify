@@ -98,8 +98,6 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
 
     }
 
-
-
     @Override
     public void didDiscoverDevice(BluetoothDevice bluetoothDevice, String deviceName, int rssi, boolean allowed) {
         // Check if the discovered device can be used with your API key. If allowed is always false,
