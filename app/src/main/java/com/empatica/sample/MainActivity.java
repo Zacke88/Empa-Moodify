@@ -7,10 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,7 +55,11 @@ public class MainActivity extends Activity implements
     private PlayListAPP softPlaylist;
     private PlayListAPP regularPlaylist;
     private String uriPlayer= "uri";
+    private String currentPlaylist = "7b9XqnXw5J47tmn0Y0IZeW";
+    private String mood = "";
     private int songNumber = 0;
+    private double stressLevel = 0;
+
 
     private boolean isFirst = true;
     private boolean isNext = false;
@@ -64,7 +70,20 @@ public class MainActivity extends Activity implements
     private TextView trackName;
     private TextView playlistName;
 
+    private Button connectEmpatica;
+    private Button disconnectEmpatica;
+    private Button skipSong;
+    private Button prevSong;
+
+    private ImageView iv;
+
     private MyBroadcastReceiver myBroadcastReceiver;
+
+    Vibrator v;
+
+    final AuthenticationRequest request = new AuthenticationRequest.Builder(CLIENT_ID, AuthenticationResponse.Type.TOKEN, REDIRECT_URI)
+            .setScopes(new String[]{"user-read-private", "playlist-read", "playlist-read-private", "streaming"})
+            .build();
 
     private Player mPlayer;
     @Override
@@ -72,16 +91,22 @@ public class MainActivity extends Activity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textResult = (TextView)findViewById(R.id.result);
-        deviceNameLabel = (TextView) findViewById(R.id.deviceName);
+        v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        iv = (ImageView)findViewById(R.id.imageView);
+        connectEmpatica = (Button) findViewById(R.id.connectEmpatica);
+        disconnectEmpatica = (Button) findViewById(R.id.disconnectEmpatica);
+        skipSong = (Button) findViewById(R.id.skipSong);
+        prevSong = (Button) findViewById(R.id.prevSong);
+        //textResult = (TextView)findViewById(R.id.result);
+        //deviceNameLabel = (TextView) findViewById(R.id.deviceName);
         trackName = (TextView) findViewById(R.id.trackName);
         playlistName = (TextView) findViewById(R.id.playlistName);
 
-        final AuthenticationRequest request = new AuthenticationRequest.Builder(CLIENT_ID, AuthenticationResponse.Type.TOKEN, REDIRECT_URI)
-                .setScopes(new String[]{"user-read-private", "playlist-read", "playlist-read-private", "streaming"})
-                .build();
+        iv.setImageResource(R.drawable.neutral);
 
         AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
+
+        moodChange();
 
         createButtons();
 
@@ -99,10 +124,8 @@ public class MainActivity extends Activity implements
     }
 
     public void createButtons() {
-        final Button connectEmpatica = (Button) findViewById(R.id.connectEmpatica);
-        final Button disconnectEmpatica = (Button) findViewById(R.id.disconnectEmpatica);
-        final Button skipSong = (Button) findViewById(R.id.skipSong);
-        final Button prevSong = (Button) findViewById(R.id.prevSong);
+        skipSong.setEnabled(false);
+        prevSong.setEnabled(false);
 
         connectEmpatica.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -123,12 +146,16 @@ public class MainActivity extends Activity implements
         skipSong.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mPlayer.skipToNext();
+                stressLevel = stressLevel + 0.1;
+                moodChange();
             }
         });
 
         prevSong.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mPlayer.skipToPrevious();
+                stressLevel = stressLevel - 0.1;
+                moodChange();
             }
         });
     }
@@ -148,7 +175,7 @@ public class MainActivity extends Activity implements
                     SpotifyService spotify = api.getService();
  
                     /*Soft playlist*/
-                    spotify.getPlaylist("spotify", "7b9XqnXw5J47tmn0Y0IZeW", new Callback<Playlist>() {
+                    spotify.getPlaylist("spotify", currentPlaylist, new Callback<Playlist>() {
                         @Override
                         public void success(Playlist playlist, Response response) {
                             int i = 0;
@@ -217,6 +244,7 @@ public class MainActivity extends Activity implements
         Log.e("MainActivity", "Received connection message: " + message);
     }
 
+    // TODO Byt inte låt i slutet av playlist
     @Override
     public void onPlaybackEvent(EventType eventType, PlayerState playerState) {
         Log.d("MainActivity", "Playback event received: " + eventType.name());
@@ -229,11 +257,20 @@ public class MainActivity extends Activity implements
             case PAUSE:
                 break;
             case TRACK_CHANGED:
-                if(songNumber < softPlaylist.getNumberOfsongs() && !isFirst && !isNext) {
+                skipSong.setEnabled(true);
+                if(songNumber < softPlaylist.getNumberOfsongs()-1 && !isFirst && !isPrev) {
                     songNumber++;
+                    prevSong.setEnabled(true);
+                    Log.e("msg", "ÄR VI HÄR INNE ELLER");
                 }
-                if(isPrev) {
+                if(isPrev && songNumber > 0) {
                     songNumber--;
+                }
+                if (songNumber >= softPlaylist.getNumberOfsongs()-1) {
+                    skipSong.setEnabled(false);
+                }
+                if (songNumber == 0) {
+                    prevSong.setEnabled(false);
                 }
                 if ((songNumber) < softPlaylist.getNumberOfsongs()) {
                     trackName.setText(softPlaylist.getNameOfTrack(songNumber));
@@ -246,7 +283,7 @@ public class MainActivity extends Activity implements
 
                 break;
             case SKIP_NEXT:
-                songNumber++;
+                //songNumber++;
                 isNext = true;
                 break;
             case SKIP_PREV:
@@ -309,8 +346,41 @@ public class MainActivity extends Activity implements
         @Override
         public void onReceive(Context context, Intent intent) {
             String result = intent.getStringExtra(EmpaticaService.EXTRA_KEY_OUT);
-            textResult.setText(result);
+            //textResult.setText(result);
         }
     }
 
+    public void moodChange() {
+
+        if(stressLevel < 0.2) {
+            if(mood.equals("happy")) {
+                Toast.makeText(this, "Mood changed to calm", Toast.LENGTH_LONG).show();
+                v.vibrate(500);
+                iv.setImageResource(R.drawable.happy);
+                mood = "happy";
+                currentPlaylist = "1j96MGp5j4jRsgZp4vMxQG";
+                AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
+            }
+        }
+        else if(stressLevel < 0.5) {
+            if(mood.equals("neutral")) {
+                Toast.makeText(this, "Mood changed to neutral", Toast.LENGTH_LONG).show();
+                v.vibrate(500);
+                iv.setImageResource(R.drawable.neutral);
+                mood = "neutral";
+                currentPlaylist = "65V6djkcVRyOStLd8nza8E";
+                AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
+            }
+        }
+        else {
+            if(mood.equals("sad")) {
+                Toast.makeText(this, "Mood changed to stressed", Toast.LENGTH_LONG).show();
+                v.vibrate(500);
+                iv.setImageResource(R.drawable.sad);
+                mood = "sad";
+                currentPlaylist = "7b9XqnXw5J47tmn0Y0IZeW";
+                AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
+            }
+        }
+    }
 }

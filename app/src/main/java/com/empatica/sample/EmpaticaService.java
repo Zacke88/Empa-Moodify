@@ -105,8 +105,8 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
         // Check if the discovered device can be used with your API key. If allowed is always false,
         // the device is not linked with your API key. Please check your developer area at
         // https://www.empatica.com/connect/developer.php
-        Log.e("msg", "HEJEHEJ");
         if (allowed) {
+            Toast.makeText(this, "Connected to: " + deviceName, Toast.LENGTH_LONG).show();
             // Stop scanning. The first allowed device will do.
             deviceManager.stopScanning();
             /*
@@ -119,7 +119,7 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
                 deviceManager.connectDevice(bluetoothDevice);
             } catch (ConnectionNotAllowedException e) {
                 // This should happen only if you try to connect when allowed == false.
-                Toast.makeText(EmpaticaService.this, "Sorry, you can't connect to this device", Toast.LENGTH_SHORT).show();
+                Toast.makeText(EmpaticaService.this, "Sorry, you can't connect to this device", Toast.LENGTH_LONG).show();
             }
         }
     }
