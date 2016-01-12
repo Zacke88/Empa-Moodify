@@ -40,7 +40,13 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     private TextView batteryLabel;
     private TextView statusLabel;
     private TextView deviceNameLabel;
+
+
     private RelativeLayout dataCnt;
+
+    public static final String ACTION_MyIntentService = "com.example.androidintentservice.RESPONSE";
+    public static final String EXTRA_KEY_IN = "EXTRA_IN";
+    public static final String EXTRA_KEY_OUT = "EXTRA_OUT";
 
     /**
      * Creates an IntentService.  Invoked by your subclass's constructor.
@@ -65,21 +71,6 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
         super.onCreate();
 
         Toast.makeText(this, "Empatica Service Started", Toast.LENGTH_LONG).show();
-                /*
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        // Initialize vars that reference UI components
-        statusLabel = (TextView) findViewById(R.id.status);
-        dataCnt = (RelativeLayout) findViewById(R.id.dataArea);
-        bvpLabel = (TextView) findViewById(R.id.bvp);
-        edaLabel = (TextView) findViewById(R.id.eda);
-        ibiLabel = (TextView) findViewById(R.id.ibi);
-        temperatureLabel = (TextView) findViewById(R.id.temperature);
-        batteryLabel = (TextView) findViewById(R.id.battery);
-        deviceNameLabel = (TextView) findViewById(R.id.deviceName);
-        */
-
 
         // Create a new EmpaDeviceManager. MainActivity is both its data and status delegate.
         deviceManager = new EmpaDeviceManager(getApplicationContext(), this, this);
@@ -93,6 +84,12 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     public void onDestroy() {
         super.onDestroy();
         deviceManager.cleanUp();
+
+        Intent intentResponse = new Intent();
+        intentResponse.setAction(ACTION_MyIntentService);
+        intentResponse.putExtra(EXTRA_KEY_OUT, "Hej från Service");
+        sendBroadcast(intentResponse);
+
         Toast.makeText(this, "Empatica Service Destroyed", Toast.LENGTH_LONG).show();
     }
 

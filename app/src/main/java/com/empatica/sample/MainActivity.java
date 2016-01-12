@@ -8,8 +8,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,44 +43,39 @@ public class MainActivity extends Activity implements
         PlayerNotificationCallback, ConnectionStateCallback {
 
     // Larrmoej
-    private static final String CLIENT_SECRET ="c11029a26e094395a6e60e8d22050663";
-    private static final String CLIENT_ID = "f18769af7d9446449f50b343023cc487";
+    //private static final String CLIENT_SECRET ="c11029a26e094395a6e60e8d22050663";
+    //private static final String CLIENT_ID = "f18769af7d9446449f50b343023cc487";
     // Zacke
-    //private static final String CLIENT_ID = "28280d98f8124d5699a0a27537e6e2f8";
-    //private static final String CLIENT_SECRET = "4d4ab16f86f949dcbb8b860797f3e300";
+    private static final String CLIENT_ID = "28280d98f8124d5699a0a27537e6e2f8";
+    private static final String CLIENT_SECRET = "4d4ab16f86f949dcbb8b860797f3e300";
     private static final String REDIRECT_URI = "moodify-api-spotify-login://callback";
     private static final int REQUEST_CODE = 1337;
-    private SpotifyPlayList playList = new SpotifyPlayList();
-    private HashMap<String,String> playlistHASH = new HashMap<>();
-    private List<String> playListUri = new ArrayList<String>();
     private PlayListAPP softPlaylist;
     private PlayListAPP regularPlaylist;
-    TextView textFieldTrackName, textFieldPlayListName;
     private String uriPlayer= "uri";
     private int songNumber = 0;
-    private UserInput userInput = new UserInput("yolo");
-    private String input = "";
 
+    private boolean isFirst = true;
+    private boolean isNext = false;
+    private boolean isPrev = false;
+
+    private TextView deviceNameLabel;
+    private TextView textResult;
+    private TextView trackName;
+    private TextView playlistName;
+
+    private MyBroadcastReceiver myBroadcastReceiver;
 
     private Player mPlayer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        /*
-        TextView trackName = findViewById(R.id.trackName);
-        TextView playlistName = findViewById(R.id.playlistName);
-        Button skipSong = findViewById(R.id.skipSong);
- 
- 
-        skipSong.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                userInput.setText(input);
-            }
-        });
-        */
 
+        textResult = (TextView)findViewById(R.id.result);
+        deviceNameLabel = (TextView) findViewById(R.id.deviceName);
+        trackName = (TextView) findViewById(R.id.trackName);
+        playlistName = (TextView) findViewById(R.id.playlistName);
 
         final AuthenticationRequest request = new AuthenticationRequest.Builder(CLIENT_ID, AuthenticationResponse.Type.TOKEN, REDIRECT_URI)
                 .setScopes(new String[]{"user-read-private", "playlist-read", "playlist-read-private", "streaming"})
@@ -88,13 +85,24 @@ public class MainActivity extends Activity implements
 
         createButtons();
 
+        createBroadcaster();
+
+    }
+
+    public void createBroadcaster() {
+        myBroadcastReceiver = new MyBroadcastReceiver();
+
+        //register BroadcastReceiver
+        IntentFilter intentFilter = new IntentFilter(EmpaticaService.ACTION_MyIntentService);
+        registerReceiver(myBroadcastReceiver, intentFilter);
+
     }
 
     public void createButtons() {
-
         final Button connectEmpatica = (Button) findViewById(R.id.connectEmpatica);
         final Button disconnectEmpatica = (Button) findViewById(R.id.disconnectEmpatica);
         final Button skipSong = (Button) findViewById(R.id.skipSong);
+        final Button prevSong = (Button) findViewById(R.id.prevSong);
 
         connectEmpatica.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -118,7 +126,11 @@ public class MainActivity extends Activity implements
             }
         });
 
-
+        prevSong.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                mPlayer.skipToPrevious();
+            }
+        });
     }
 
     @Override
@@ -136,7 +148,7 @@ public class MainActivity extends Activity implements
                     SpotifyService spotify = api.getService();
  
                     /*Soft playlist*/
-                    spotify.getPlaylist("fanos", "1mCf6v2iL6pattoFszfv6n", new Callback<Playlist>() {
+                    spotify.getPlaylist("spotify", "7b9XqnXw5J47tmn0Y0IZeW", new Callback<Playlist>() {
                         @Override
                         public void success(Playlist playlist, Response response) {
                             int i = 0;
@@ -147,8 +159,10 @@ public class MainActivity extends Activity implements
                             for (PlaylistTrack te : temp) {
                                 softPlaylist.addToList(i, te.track.uri);
                                 softPlaylist.setPlayListTrackName(i, te.track.name);
+                                Log.e("track", te.track.name);
                                 i++;
                             }
+
                             Spotify.getPlayer(playerConfig, this, new Player.InitializationObserver() {
                                 @Override
                                 public void onInitialized(final Player player) {
@@ -161,7 +175,7 @@ public class MainActivity extends Activity implements
                                 @Override
                                 public void onError(Throwable throwable) {
                                     Log.d("Uri fail", uriPlayer);
-                                    Log.e("Spotifyy", "Could not initialize player: " + throwable.getMessage());
+                                    Log.e("Spotify", "Could not initialize player: " + throwable.getMessage());
                                 }
                             });
                         }
@@ -176,10 +190,6 @@ public class MainActivity extends Activity implements
                 default:
             }
         }
-    }
-
-    public String getUri(int position){
-        return playListUri.get(position);
     }
 
     @Override
@@ -210,32 +220,48 @@ public class MainActivity extends Activity implements
     @Override
     public void onPlaybackEvent(EventType eventType, PlayerState playerState) {
         Log.d("MainActivity", "Playback event received: " + eventType.name());
+
         switch (eventType) {
             case PLAY:
-                /*
-                if(softPlaylist !=null){
-                    textFieldPlayListName.setText(softPlaylist.getPlayListname());
-
-                }
-                */
+                    playlistName.setText(softPlaylist.getPlayListname());
+                    playlistName.setGravity(Gravity.CENTER_HORIZONTAL);
                 break;
             case PAUSE:
                 break;
             case TRACK_CHANGED:
-                Log.d("Changed","daw");
-                Log.d("next song", "new song lol: " + Integer.toString(songNumber));
-                if(softPlaylist !=null) {
-                    /*
-                    if ((songNumber) < softPlaylist.getNumberOfsongs())
-                        textFieldTrackName.setText(softPlaylist.getNameOfTrack(songNumber));
-                        */
+                if(songNumber < softPlaylist.getNumberOfsongs() && !isFirst && !isNext) {
+                    songNumber++;
+                }
+                if(isPrev) {
+                    songNumber--;
+                }
+                if ((songNumber) < softPlaylist.getNumberOfsongs()) {
+                    trackName.setText(softPlaylist.getNameOfTrack(songNumber));
+                    trackName.setGravity(Gravity.CENTER_HORIZONTAL);
                 }
 
-                songNumber++;
+                isNext = false;
+                isFirst = false;
+                isPrev = false;
+
                 break;
             case SKIP_NEXT:
+                songNumber++;
+                isNext = true;
                 break;
             case SKIP_PREV:
+                int i = 0;
+                if (songNumber > 0) {
+                    songNumber--;
+                    i++;
+                }
+                if (songNumber > 0) {
+                    songNumber--;
+                    i++;
+                }
+                if(i == 1) {
+                    isPrev = true;
+                }
                 break;
             case SHUFFLE_ENABLED:
                 break;
@@ -273,24 +299,18 @@ public class MainActivity extends Activity implements
 
     @Override
     protected void onDestroy() {
-        Spotify.destroyPlayer(this);
         super.onDestroy();
+        Spotify.destroyPlayer(this);
+        //un-register BroadcastReceiver
+        unregisterReceiver(myBroadcastReceiver);
     }
 
-    // Update a label with some text, making sure this is run in the UI thread
-    private void updateLabel(final TextView label, final String text) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                label.setText(text);
-            }
-        });
+    public class MyBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String result = intent.getStringExtra(EmpaticaService.EXTRA_KEY_OUT);
+            textResult.setText(result);
+        }
     }
-
-    public void recieve() {
-
-    }
-
-
 
 }
