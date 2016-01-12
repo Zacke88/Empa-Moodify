@@ -1,187 +1,261 @@
 package com.empatica.sample;
 
+
 import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.empatica.empalink.ConnectionNotAllowedException;
-import com.empatica.empalink.EmpaDeviceManager;
-import com.empatica.empalink.config.EmpaSensorStatus;
-import com.empatica.empalink.config.EmpaSensorType;
-import com.empatica.empalink.config.EmpaStatus;
-import com.empatica.empalink.delegate.EmpaDataDelegate;
-import com.empatica.empalink.delegate.EmpaStatusDelegate;
+import com.spotify.sdk.android.authentication.AuthenticationClient;
+import com.spotify.sdk.android.authentication.AuthenticationRequest;
+import com.spotify.sdk.android.authentication.AuthenticationResponse;
+import com.spotify.sdk.android.player.Config;
+import com.spotify.sdk.android.player.Spotify;
+import com.spotify.sdk.android.player.ConnectionStateCallback;
+import com.spotify.sdk.android.player.Player;
+import com.spotify.sdk.android.player.PlayerNotificationCallback;
+import com.spotify.sdk.android.player.PlayerState;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import kaaes.spotify.webapi.android.SpotifyApi;
+import kaaes.spotify.webapi.android.SpotifyService;
+import kaaes.spotify.webapi.android.models.Pager;
+import kaaes.spotify.webapi.android.models.Playlist;
+import kaaes.spotify.webapi.android.models.PlaylistTrack;
+import retrofit.Callback;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 
 
-public class MainActivity extends AppCompatActivity implements EmpaDataDelegate, EmpaStatusDelegate {
+public class MainActivity extends Activity implements
+        PlayerNotificationCallback, ConnectionStateCallback {
 
-    private static final int REQUEST_ENABLE_BT = 1;
-    //private static final long STREAMING_TIME = 10000; // Stops streaming 10 seconds after connection
-    private static final long STREAMING_TIME = 1000000; // Stops streaming 1000 seconds after connection
+    // Larrmoej
+    private static final String CLIENT_SECRET ="c11029a26e094395a6e60e8d22050663";
+    private static final String CLIENT_ID = "f18769af7d9446449f50b343023cc487";
+    // Zacke
+    //private static final String CLIENT_ID = "28280d98f8124d5699a0a27537e6e2f8";
+    //private static final String CLIENT_SECRET = "4d4ab16f86f949dcbb8b860797f3e300";
+    private static final String REDIRECT_URI = "moodify-api-spotify-login://callback";
+    private static final int REQUEST_CODE = 1337;
+    private SpotifyPlayList playList = new SpotifyPlayList();
+    private HashMap<String,String> playlistHASH = new HashMap<>();
+    private List<String> playListUri = new ArrayList<String>();
+    private PlayListAPP softPlaylist;
+    private PlayListAPP regularPlaylist;
+    TextView textFieldTrackName, textFieldPlayListName;
+    private String uriPlayer= "uri";
+    private int songNumber = 0;
+    private UserInput userInput = new UserInput("yolo");
+    private String input = "";
 
-    private static final String EMPATICA_API_KEY = "74da5531eacb41bb819a7643cfe88d06"; // TODO insert your API Key here
 
-    private EmpaDeviceManager deviceManager;
-
-    private TextView bvpLabel;
-    private TextView edaLabel;
-    private TextView ibiLabel;
-    private TextView temperatureLabel;
-    private TextView batteryLabel;
-    private TextView statusLabel;
-    private TextView deviceNameLabel;
-    private RelativeLayout dataCnt;
-
-
+    private Player mPlayer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.e("msg", "ONCREATE ! ! !! ! ! ! !! !   !  !  !   !  !  !  !! ! ! ! ! !  ! ! ! ");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        // Initialize vars that reference UI components
-        statusLabel = (TextView) findViewById(R.id.status);
-        dataCnt = (RelativeLayout) findViewById(R.id.dataArea);
-        bvpLabel = (TextView) findViewById(R.id.bvp);
-        edaLabel = (TextView) findViewById(R.id.eda);
-        ibiLabel = (TextView) findViewById(R.id.ibi);
-        temperatureLabel = (TextView) findViewById(R.id.temperature);
-        batteryLabel = (TextView) findViewById(R.id.battery);
-        deviceNameLabel = (TextView) findViewById(R.id.deviceName);
-
-
-        try {
-                //System.loadLibrary("empac");
-            } catch (UnsatisfiedLinkError use) {
-                Log.e("JNI", "WARNING: Could not load so file");
+        /*
+        TextView trackName = findViewById(R.id.trackName);
+        TextView playlistName = findViewById(R.id.playlistName);
+        Button skipSong = findViewById(R.id.skipSong);
+ 
+ 
+        skipSong.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                userInput.setText(input);
             }
+        });
+        */
 
-        // Create a new EmpaDeviceManager. MainActivity is both its data and status delegate.
-        deviceManager = new EmpaDeviceManager(getApplicationContext(), this, this);
-        // Initialize the Device Manager using your API key. You need to have Internet access at this point.
-        deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
+
+        final AuthenticationRequest request = new AuthenticationRequest.Builder(CLIENT_ID, AuthenticationResponse.Type.TOKEN, REDIRECT_URI)
+                .setScopes(new String[]{"user-read-private", "playlist-read", "playlist-read-private", "streaming"})
+                .build();
+
+        AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
+
+        startService(new Intent(this, EmpaticaService.class));
+
+         BroadcastReceiver receiver = new BroadcastReceiver() {
+             @Override
+             public void onReceive(Context context, Intent intent) {
+                /* Bundle bundle = intent.getExtras();
+                 if(bundle != null){
+                     String dbi = bundle.getString(EmpaticaService.)
+                 }*/
+                Toast.makeText(context,intent.getStringExtra("temp"), Toast.LENGTH_LONG).show();
+                 Log.e("msg", "HEEEEEEEEEEEEEEEEj");
+
+             }
+         };
+
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        deviceManager.stopScanning();
+    protected void onActivityResult(final int requestCode, int resultCode, Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+
+        if(requestCode == REQUEST_CODE){
+            AuthenticationResponse response = AuthenticationClient.getResponse(resultCode,intent);
+
+            switch (response.getType()){
+                case TOKEN:
+                    SpotifyApi api = new SpotifyApi();
+                    api.setAccessToken(response.getAccessToken());
+                    final Config playerConfig = new Config(this, response.getAccessToken(), CLIENT_ID);
+                    SpotifyService spotify = api.getService();
+ 
+                    /*Soft playlist*/
+                    spotify.getPlaylist("fanos", "1mCf6v2iL6pattoFszfv6n", new Callback<Playlist>() {
+                        @Override
+                        public void success(Playlist playlist, Response response) {
+                            int i = 0;
+                            Pager<?> jao = playlist.tracks;
+                            List<PlaylistTrack> temp = (List<PlaylistTrack>) jao.items;
+                            softPlaylist = new PlayListAPP(temp.size(), playlist.name);
+
+                            for (PlaylistTrack te : temp) {
+                                softPlaylist.addToList(i, te.track.uri);
+                                softPlaylist.setPlayListTrackName(i, te.track.name);
+                                i++;
+                            }
+                            Spotify.getPlayer(playerConfig, this, new Player.InitializationObserver() {
+                                @Override
+                                public void onInitialized(final Player player) {
+                                    Log.d("Uri path2", uriPlayer);
+                                    mPlayer = player;
+                                    mPlayer.addConnectionStateCallback(MainActivity.this);
+                                    mPlayer.addPlayerNotificationCallback(MainActivity.this);
+                                    mPlayer.play(softPlaylist.playListTracksUri);
+                                }
+                                @Override
+                                public void onError(Throwable throwable) {
+                                    Log.d("Uri fail", uriPlayer);
+                                    Log.e("Spotifyy", "Could not initialize player: " + throwable.getMessage());
+                                }
+                            });
+                        }
+                        @Override
+                        public void failure(RetrofitError error) {
+                        }
+                    });
+                    break;
+                case ERROR:
+                    Log.d("facking", "error");
+                    break;
+                default:
+            }
+        }
+    }
+
+    public String getUri(int position){
+        return playListUri.get(position);
+    }
+
+    @Override
+    public void onLoggedIn() {
+        Log.e("MainActivity", "User logged in");
+    }
+
+    @Override
+    public void onLoggedOut() {
+        Log.e("MainActivity", "User logged out");
+    }
+
+    @Override
+    public void onLoginFailed(Throwable error) {
+        Log.e("MainActivity", "Login failed");
+    }
+
+    @Override
+    public void onTemporaryError() {
+        Log.e("MainActivity", "Temporary error occurred");
+    }
+
+    @Override
+    public void onConnectionMessage(String message) {
+        Log.e("MainActivity", "Received connection message: " + message);
+    }
+
+    @Override
+    public void onPlaybackEvent(EventType eventType, PlayerState playerState) {
+        Log.d("MainActivity", "Playback event received: " + eventType.name());
+        switch (eventType) {
+            case PLAY:
+                /*
+                if(softPlaylist !=null){
+                    textFieldPlayListName.setText(softPlaylist.getPlayListname());
+
+                }
+                */
+                break;
+            case PAUSE:
+                break;
+            case TRACK_CHANGED:
+                Log.d("Changed","daw");
+                Log.d("next song", "new song lol: " + Integer.toString(songNumber));
+                if(softPlaylist !=null) {
+                    /*
+                    if ((songNumber) < softPlaylist.getNumberOfsongs())
+                        textFieldTrackName.setText(softPlaylist.getNameOfTrack(songNumber));
+                        */
+                }
+
+                songNumber++;
+                break;
+            case SKIP_NEXT:
+                break;
+            case SKIP_PREV:
+                break;
+            case SHUFFLE_ENABLED:
+                break;
+            case SHUFFLE_DISABLED:
+                break;
+            case REPEAT_ENABLED:
+                break;
+            case REPEAT_DISABLED:
+                break;
+            case BECAME_ACTIVE:
+                break;
+            case BECAME_INACTIVE:
+                break;
+            case LOST_PERMISSION:
+                break;
+            case AUDIO_FLUSH:
+                break;
+            case END_OF_CONTEXT:
+                break;
+            case EVENT_UNKNOWN:
+                break;
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void onPlaybackError(ErrorType errorType, String errorDetails) {
+        Log.d("MainActivity", "Playback error received: " + errorType.name());
+        switch (errorType) {
+            default:
+                break;
+        }
     }
 
     @Override
     protected void onDestroy() {
+        Spotify.destroyPlayer(this);
         super.onDestroy();
-        deviceManager.cleanUp();
-    }
-
-    @Override
-    public void didDiscoverDevice(BluetoothDevice bluetoothDevice, String deviceName, int rssi, boolean allowed) {
-        // Check if the discovered device can be used with your API key. If allowed is always false,
-        // the device is not linked with your API key. Please check your developer area at
-        // https://www.empatica.com/connect/developer.php
-        if (allowed) {
-            // Stop scanning. The first allowed device will do.
-            deviceManager.stopScanning();
-            try {
-                // Connect to the device
-                deviceManager.connectDevice(bluetoothDevice);
-                updateLabel(deviceNameLabel, "To: " + deviceName);
-            } catch (ConnectionNotAllowedException e) {
-                // This should happen only if you try to connect when allowed == false.
-                Toast.makeText(MainActivity.this, "Sorry, you can't connect to this device", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    @Override
-    public void didRequestEnableBluetooth() {
-        // Request the user to enable Bluetooth
-        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // The user chose not to enable Bluetooth
-        if (requestCode == REQUEST_ENABLE_BT && resultCode == Activity.RESULT_CANCELED) {
-            // You should deal with this
-            return;
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    @Override
-    public void didUpdateSensorStatus(EmpaSensorStatus status, EmpaSensorType type) {
-        // No need to implement this right now
-    }
-
-    @Override
-    public void didUpdateStatus(EmpaStatus status) {
-        // Update the UI
-        updateLabel(statusLabel, status.name());
-
-        // The device manager is ready for use
-        if (status == EmpaStatus.READY) {
-            updateLabel(statusLabel, status.name() + " - Turn on your device");
-            // Start scanning
-            deviceManager.startScanning();
-        // The device manager has established a connection
-        } else if (status == EmpaStatus.CONNECTED) {
-            // Stop streaming after STREAMING_TIME
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    dataCnt.setVisibility(View.VISIBLE);
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            // Disconnect device
-                            deviceManager.disconnect();
-                        }
-                    }, STREAMING_TIME);
-                }
-            });
-        // The device manager disconnected from a device
-        } else if (status == EmpaStatus.DISCONNECTED) {
-            updateLabel(deviceNameLabel, "");
-        }
-    }
-
-    @Override
-    public void didReceiveAcceleration(int x, int y, int z, double timestamp) {
-    }
-
-    @Override
-    public void didReceiveBVP(float bvp, double timestamp) {
-        updateLabel(bvpLabel, "" + bvp);
-    }
-
-    @Override
-    public void didReceiveBatteryLevel(float battery, double timestamp) {
-        updateLabel(batteryLabel, String.format("%.0f %%", battery * 100));
-    }
-
-    @Override
-    public void didReceiveGSR(float gsr, double timestamp) {
-        updateLabel(edaLabel, "" + gsr);
-    }
-
-    @Override
-    public void didReceiveIBI(float ibi, double timestamp) {
-        updateLabel(ibiLabel, "" + ibi);
-    }
-
-    @Override
-    public void didReceiveTemperature(float temp, double timestamp) {
-        updateLabel(temperatureLabel, "" + temp);
     }
 
     // Update a label with some text, making sure this is run in the UI thread
@@ -193,4 +267,11 @@ public class MainActivity extends AppCompatActivity implements EmpaDataDelegate,
             }
         });
     }
+
+    public void recieve() {
+
+    }
+
+
+
 }
