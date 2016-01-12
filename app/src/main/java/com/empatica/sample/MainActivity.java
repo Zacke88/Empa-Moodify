@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -61,7 +63,6 @@ public class MainActivity extends Activity implements
     private Player mPlayer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.e("msg", "ONCREATE ! ! !! ! ! ! !! !   !  !  !   !  !  !  !! ! ! ! ! !  ! ! ! ");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         /*
@@ -85,20 +86,38 @@ public class MainActivity extends Activity implements
 
         AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
 
-        startService(new Intent(this, EmpaticaService.class));
+        createButtons();
 
-         BroadcastReceiver receiver = new BroadcastReceiver() {
-             @Override
-             public void onReceive(Context context, Intent intent) {
-                /* Bundle bundle = intent.getExtras();
-                 if(bundle != null){
-                     String dbi = bundle.getString(EmpaticaService.)
-                 }*/
-                Toast.makeText(context,intent.getStringExtra("temp"), Toast.LENGTH_LONG).show();
-                 Log.e("msg", "HEEEEEEEEEEEEEEEEj");
+    }
 
-             }
-         };
+    public void createButtons() {
+
+        final Button connectEmpatica = (Button) findViewById(R.id.connectEmpatica);
+        final Button disconnectEmpatica = (Button) findViewById(R.id.disconnectEmpatica);
+        final Button skipSong = (Button) findViewById(R.id.skipSong);
+
+        connectEmpatica.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startService(new Intent(MainActivity.this, EmpaticaService.class));
+                connectEmpatica.setVisibility(View.INVISIBLE);
+                disconnectEmpatica.setVisibility(View.VISIBLE);
+            }
+        });
+
+        disconnectEmpatica.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                stopService(new Intent(MainActivity.this, EmpaticaService.class));
+                connectEmpatica.setVisibility(View.VISIBLE);
+                disconnectEmpatica.setVisibility(View.INVISIBLE);
+            }
+        });
+
+        skipSong.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                mPlayer.skipToNext();
+            }
+        });
+
 
     }
 

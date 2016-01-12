@@ -61,14 +61,10 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     */
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        deviceManager.cleanUp();
-    }
+    public void onCreate() {
+        super.onCreate();
 
-    @Override
-    protected void onHandleIntent(Intent intent) {
-        Log.e("msg", "TJENNEN");
+        Toast.makeText(this, "Empatica Service Started", Toast.LENGTH_LONG).show();
                 /*
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -85,25 +81,27 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
         */
 
 
-        try {
-            //System.loadLibrary("empac");
-        } catch (UnsatisfiedLinkError use) {
-            Log.e("JNI", "WARNING: Could not load so file");
-        }
-
-        //Intent spotifyIntent = new Intent(this, SpotifyActivity.class);
-        //startActivity(spotifyIntent);
-
-        //spotifyIntent.
-
-        //System.loadLibrary("empac");
-
         // Create a new EmpaDeviceManager. MainActivity is both its data and status delegate.
         deviceManager = new EmpaDeviceManager(getApplicationContext(), this, this);
         // Initialize the Device Manager using your API key. You need to have Internet access at this point.
         deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
 
+
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        deviceManager.cleanUp();
+        Toast.makeText(this, "Empatica Service Destroyed", Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    protected void onHandleIntent(Intent intent) {
+
+    }
+
+
 
     @Override
     public void didDiscoverDevice(BluetoothDevice bluetoothDevice, String deviceName, int rssi, boolean allowed) {
@@ -114,9 +112,11 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
         if (allowed) {
             // Stop scanning. The first allowed device will do.
             deviceManager.stopScanning();
+            /*
             Intent spotifyIntent = new Intent(getBaseContext(), MainActivity.class);
 
             startActivity(spotifyIntent);
+            */
             try {
                 // Connect to the device
                 deviceManager.connectDevice(bluetoothDevice);
@@ -131,7 +131,7 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     @Override
     public void didRequestEnableBluetooth() {
         // Request the user to enable Bluetooth
-        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        //Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
     }
 /*
     @Override
@@ -205,9 +205,11 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
 
     @Override
     public void didReceiveTemperature(float temp, double timestamp) {
+        /*
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra("temp", temp);
         sendBroadcast(intent);
+        */
 
     }
 

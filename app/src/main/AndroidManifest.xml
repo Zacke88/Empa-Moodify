@@ -20,8 +20,11 @@
             </intent-filter>
         </activity>
         <service
-            android:name=".EmpaticaService"
-            />
+            android:name=".EmpaticaService">
+        </service>
+        <service
+            android:name=".TestService">
+        </service>
         <activity
             android:name="com.spotify.sdk.android.authentication.LoginActivity"
             android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
