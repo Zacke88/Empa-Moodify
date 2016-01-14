@@ -2,9 +2,10 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="@android:style/Theme.Holo.Light">
-        <item name="android:textColor">#F14C38</item>
+        <item name="android:textColor">#F4F1E0</item>
         <item name="android:actionBarStyle">@style/MoodifyActionBar</item>
         <item name="android:windowBackground">@color/background_holo_light</item>
+        <item name="android:buttonStyle">@style/MoodifyButton</item>
 
     </style>
 
@@ -14,12 +15,17 @@
     </style>
 
     <style name="MoodifyActionBar" parent="@android:style/Widget.Holo.Light.ActionBar">
-        <item name="android:background">#144955</item>
+        <item name="android:background">#0d2f37</item>
         <item name="android:titleTextStyle">@style/MoodifyActionBarTitleTextStyle</item>
     </style>
 
     <style name="MoodifyActionBarTitleTextStyle" parent="@android:style/TextAppearance.Holo.Widget.ActionBar.Title">
-        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColor">#F4F1E0</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="MoodifyButton" parent="@android:style/Widget.Holo.Button">
+        <item name="android:textColor">#F4F1E0</item>
     </style>
 
 

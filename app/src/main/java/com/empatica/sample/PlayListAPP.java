@@ -3,6 +3,8 @@ package com.empatica.sample;
 import java.util.ArrayList;
 import java.util.List;
 
+import kaaes.spotify.webapi.android.models.Artist;
+
 /**
  * Created by Rallmo on 2015-12-20.
  */
@@ -11,6 +13,7 @@ public class PlayListAPP {
     List<String> playListTrackName = new ArrayList<>();
     int numberOfsongs;
     String playListname;
+    List<String> artistName = new ArrayList<>();
 
     public PlayListAPP(int numberOfsongs, String playListName){
         this.numberOfsongs = numberOfsongs;
@@ -42,6 +45,14 @@ public class PlayListAPP {
     }
     public String getPlayListname(){
         return playListname;
+    }
+
+    public void setArtist(int i, Artist a) {
+        artistName.add(i, a.name);
+    }
+
+    public String getArtistName(int position) {
+        return artistName.get(position);
     }
 
 

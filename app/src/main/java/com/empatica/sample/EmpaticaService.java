@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -26,10 +27,10 @@ import com.empatica.empalink.delegate.EmpaStatusDelegate;
 public class EmpaticaService extends IntentService implements EmpaDataDelegate, EmpaStatusDelegate {
 
     private static final int REQUEST_ENABLE_BT = 1;
-    //private static final long STREAMING_TIME = 10000; // Stops streaming 10 seconds after connection
-    private static final long STREAMING_TIME = 10000; // Stops streaming 1000 seconds after connection
+    private static final long STREAMING_TIME = 10000; // Stops streaming 10 seconds after connection
+    //private static final long STREAMING_TIME = 10000; // Stops streaming 1000 seconds after connection
 
-    private static final String EMPATICA_API_KEY = "74da5531eacb41bb819a7643cfe88d06"; // TODO insert your API Key here
+    private static final String EMPATICA_API_KEY = "74da5531eacb41bb819a7643cfe88d06";
 
     private EmpaDeviceManager deviceManager;
 
@@ -41,12 +42,21 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     private TextView statusLabel;
     private TextView deviceNameLabel;
 
+    Double stressLevel = 0.0;
+    StressLevel stress = new StressLevel();
+    Intent intentResponse;
+
 
     private RelativeLayout dataCnt;
 
     public static final String ACTION_MyIntentService = "com.example.androidintentservice.RESPONSE";
     public static final String EXTRA_KEY_IN = "EXTRA_IN";
     public static final String EXTRA_KEY_OUT = "EXTRA_OUT";
+
+    private boolean deviceCreated = false;
+    private boolean deviceRDY = false;
+
+
 
     /**
      * Creates an IntentService.  Invoked by your subclass's constructor.
@@ -58,7 +68,7 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     }
 
 
-    /*
+/*
     @Override
     protected void onPause() {
         super.onPause();
@@ -66,31 +76,36 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     }
     */
 
+
     @Override
     public void onCreate() {
         super.onCreate();
 
         Toast.makeText(this, "Empatica Service Started", Toast.LENGTH_LONG).show();
 
-        // Create a new EmpaDeviceManager. MainActivity is both its data and status delegate.
-        deviceManager = new EmpaDeviceManager(getApplicationContext(), this, this);
-        // Initialize the Device Manager using your API key. You need to have Internet access at this point.
-        deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
+        if(!deviceCreated) {
+            Log.e("msg", "DEVICE");
+            deviceCreated = true;
+            // Create a new EmpaDeviceManager. MainActivity is both its data and status delegate.
+            deviceManager = new EmpaDeviceManager(getApplicationContext(), this, this);
+            // Initialize the Device Manager using your API key. You need to have Internet access at this point.
+            deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
+            deviceRDY = true;
+        }
+
+        Log.e("msg", "Created");
 
 
     }
 
+
     @Override
     public void onDestroy() {
+        Log.e("msg", "Destroyed");
         super.onDestroy();
-        deviceManager.cleanUp();
+        //deviceManager.cleanUp();
 
-        Intent intentResponse = new Intent();
-        intentResponse.setAction(ACTION_MyIntentService);
-        intentResponse.putExtra(EXTRA_KEY_OUT, "Hej från Service");
-        sendBroadcast(intentResponse);
-
-        Toast.makeText(this, "Empatica Service Destroyed", Toast.LENGTH_LONG).show();
+        //Toast.makeText(this, "Empatica Service Destroyed", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -103,15 +118,12 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
         // Check if the discovered device can be used with your API key. If allowed is always false,
         // the device is not linked with your API key. Please check your developer area at
         // https://www.empatica.com/connect/developer.php
+
+        Log.e("msg", "DISCOVERED");
         if (allowed) {
             Toast.makeText(this, "Connected to: " + deviceName, Toast.LENGTH_LONG).show();
             // Stop scanning. The first allowed device will do.
             deviceManager.stopScanning();
-            /*
-            Intent spotifyIntent = new Intent(getBaseContext(), MainActivity.class);
-
-            startActivity(spotifyIntent);
-            */
             try {
                 // Connect to the device
                 deviceManager.connectDevice(bluetoothDevice);
@@ -126,9 +138,11 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     @Override
     public void didRequestEnableBluetooth() {
         // Request the user to enable Bluetooth
-        //Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        //startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
     }
-/*
+
+    /*
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         // The user chose not to enable Bluetooth
@@ -147,17 +161,38 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
 
     @Override
     public void didUpdateStatus(EmpaStatus status) {
+
+
+        //Log.e("msg", "UPDATE");
+
+/*
+        if(!deviceCreated) {
+            Log.e("msg", "DEVICE2");
+            deviceCreated = true;
+            deviceManager = new EmpaDeviceManager(getApplicationContext(), this, this);
+            deviceManager.authenticateWithAPIKey(EMPATICA_API_KEY);
+            deviceRDY = true;
+        }
+        */
+
+
         /* Update the UI
         //updateLabel(statusLabel, status.name());
 
         // The device manager is ready for use
-        if (status == EmpaStatus.READY) {
-            updateLabel(statusLabel, status.name() + " - Turn on your device");
+        */
+        if (status == EmpaStatus.READY && deviceRDY) {
+            //updateLabel(statusLabel, status.name() + " - Turn on your device");
             // Start scanning
             deviceManager.startScanning();
+            //deviceManager.startScanning();
         // The device manager has established a connection
         } else if (status == EmpaStatus.CONNECTED) {
+            Log.e("msg", "CONNECTED");
+            intentResponse = new Intent();
+            //deviceManager.startScanning();
             // Stop streaming after STREAMING_TIME
+            /*
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -171,10 +206,13 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
                     }, STREAMING_TIME);
                 }
             });
+            */
+
         // The device manager disconnected from a device
         } else if (status == EmpaStatus.DISCONNECTED) {
-            updateLabel(deviceNameLabel, "");
-        } */
+            //updateLabel(deviceNameLabel, "");
+
+        }
     }
 
     @Override
@@ -187,6 +225,7 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
 
     @Override
     public void didReceiveBatteryLevel(float battery, double timestamp) {
+        //updateLabel(ibiLabel, "" + ibi);
     }
 
     @Override
@@ -196,6 +235,15 @@ public class EmpaticaService extends IntentService implements EmpaDataDelegate, 
     @Override
     public void didReceiveIBI(float ibi, double timestamp) {
         //updateLabel(ibiLabel, "" + ibi);
+
+        stress.addIbi(ibi, timestamp);
+        stressLevel = stress.getStress();
+
+        if(stressLevel > 0.1) {
+            intentResponse.setAction(ACTION_MyIntentService);
+            intentResponse.putExtra(EXTRA_KEY_OUT, Double.toString(stressLevel));
+            sendBroadcast(intentResponse);
+        }
     }
 
     @Override

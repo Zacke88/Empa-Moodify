@@ -16,7 +16,6 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
@@ -27,6 +26,9 @@ import com.spotify.sdk.android.player.Player;
 import com.spotify.sdk.android.player.PlayerNotificationCallback;
 import com.spotify.sdk.android.player.PlayerState;
 
+import java.security.Timestamp;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +39,7 @@ import kaaes.spotify.webapi.android.models.Pager;
 import kaaes.spotify.webapi.android.models.Playlist;
 import kaaes.spotify.webapi.android.models.PlaylistTrack;
 import retrofit.Callback;
+import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
@@ -55,15 +58,23 @@ public class MainActivity extends Activity implements
     private PlayListAPP softPlaylist;
     private PlayListAPP regularPlaylist;
     private String uriPlayer= "uri";
-    private String currentPlaylist = "7b9XqnXw5J47tmn0Y0IZeW";
-    private String mood = "";
+    private String currentPlaylist = "4csYv6Cm7OI6VHJ1U7nJXz";
+    private String playlistUser = "spotify";
+    private String mood = "neutral";
     private int songNumber = 0;
     private double stressLevel = 0;
 
+    private SongPlaying songPlaying = new SongPlaying();
+    private final String sadSmiley="http://i64.tinypic.com/23l0yq.png";
+    private final String happySmiley="http://i67.tinypic.com/dw3vdl.png";
+    private final String neutralSmiley="http://i66.tinypic.com/2ah84sm.png";
+    private String smiley = "http://i66.tinypic.com/2ah84sm.png";
 
     private boolean isFirst = true;
     private boolean isNext = false;
     private boolean isPrev = false;
+    private boolean recievedThings = false;
+    public boolean changedMood = false;
 
     private TextView deviceNameLabel;
     private TextView textResult;
@@ -76,6 +87,7 @@ public class MainActivity extends Activity implements
     private Button prevSong;
 
     private ImageView iv;
+    private ImageView iv2;
 
     private MyBroadcastReceiver myBroadcastReceiver;
 
@@ -93,6 +105,7 @@ public class MainActivity extends Activity implements
 
         v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         iv = (ImageView)findViewById(R.id.imageView);
+        iv2 = (ImageView) findViewById(R.id.imageView2);
         connectEmpatica = (Button) findViewById(R.id.connectEmpatica);
         disconnectEmpatica = (Button) findViewById(R.id.disconnectEmpatica);
         skipSong = (Button) findViewById(R.id.skipSong);
@@ -100,13 +113,14 @@ public class MainActivity extends Activity implements
         //textResult = (TextView)findViewById(R.id.result);
         //deviceNameLabel = (TextView) findViewById(R.id.deviceName);
         trackName = (TextView) findViewById(R.id.trackName);
-        playlistName = (TextView) findViewById(R.id.playlistName);
+        //playlistName = (TextView) findViewById(R.id.playlistName);
 
-        iv.setImageResource(R.drawable.neutral);
+        iv.setImageResource(R.drawable.nothing);
+        iv2.setImageResource(R.drawable.note);
 
         AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
 
-        moodChange();
+        //moodChange();
 
         createButtons();
 
@@ -146,7 +160,7 @@ public class MainActivity extends Activity implements
         skipSong.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mPlayer.skipToNext();
-                stressLevel = stressLevel + 0.1;
+                stressLevel += 0.1;
                 moodChange();
             }
         });
@@ -154,7 +168,7 @@ public class MainActivity extends Activity implements
         prevSong.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 mPlayer.skipToPrevious();
-                stressLevel = stressLevel - 0.1;
+                stressLevel -= 0.1;
                 moodChange();
             }
         });
@@ -175,10 +189,13 @@ public class MainActivity extends Activity implements
                     SpotifyService spotify = api.getService();
  
                     /*Soft playlist*/
-                    spotify.getPlaylist("spotify", currentPlaylist, new Callback<Playlist>() {
+                    spotify.getPlaylist(playlistUser, currentPlaylist, new Callback<Playlist>() {
                         @Override
                         public void success(Playlist playlist, Response response) {
                             int i = 0;
+                            songNumber = 0;
+                            changedMood = false;
+                            isFirst = true;
                             Pager<?> jao = playlist.tracks;
                             List<PlaylistTrack> temp = (List<PlaylistTrack>) jao.items;
                             softPlaylist = new PlayListAPP(temp.size(), playlist.name);
@@ -250,35 +267,63 @@ public class MainActivity extends Activity implements
 
         switch (eventType) {
             case PLAY:
-                    playlistName.setText(softPlaylist.getPlayListname());
-                    playlistName.setGravity(Gravity.CENTER_HORIZONTAL);
                 break;
             case PAUSE:
                 break;
             case TRACK_CHANGED:
-                skipSong.setEnabled(true);
-                if(songNumber < softPlaylist.getNumberOfsongs()-1 && !isFirst && !isPrev) {
-                    songNumber++;
-                    prevSong.setEnabled(true);
-                    Log.e("msg", "ÄR VI HÄR INNE ELLER");
-                }
-                if(isPrev && songNumber > 0) {
-                    songNumber--;
-                }
-                if (songNumber >= softPlaylist.getNumberOfsongs()-1) {
-                    skipSong.setEnabled(false);
-                }
-                if (songNumber == 0) {
-                    prevSong.setEnabled(false);
-                }
-                if ((songNumber) < softPlaylist.getNumberOfsongs()) {
-                    trackName.setText(softPlaylist.getNameOfTrack(songNumber));
-                    trackName.setGravity(Gravity.CENTER_HORIZONTAL);
-                }
+                if(!changedMood) {
+                    skipSong.setEnabled(true);
+                    //playlistName.setText(softPlaylist.getPlayListname());
+                    //playlistName.setGravity(Gravity.CENTER_HORIZONTAL);
+                    if (songNumber < softPlaylist.getNumberOfsongs() - 1 && !isFirst && !isPrev) {
+                        songNumber++;
+                        prevSong.setEnabled(true);
+                    }
+                    if (isPrev && songNumber > 0) {
+                        songNumber--;
+                    }
+                    if (songNumber >= softPlaylist.getNumberOfsongs() - 1) {
+                        skipSong.setEnabled(false);
+                    }
+                    if (songNumber == 0) {
+                        prevSong.setEnabled(false);
+                    }
+                    if ((songNumber) < softPlaylist.getNumberOfsongs()) {
+                        trackName.setText(softPlaylist.getNameOfTrack(songNumber));
+                        trackName.setGravity(Gravity.CENTER_HORIZONTAL);
+                        songPlaying.setName(" " + softPlaylist.getNameOfTrack(songNumber));
+                        //java.util.Date date= new java.util.Date();
+                        // String date = new SimpleDateFormat("dd-MM-yyyy").format(new Date());
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        java.util.Date now = new java.util.Date();
+                        String strDate = sdf.format(now);
+                        songPlaying.setTime(strDate);
+                        //songPlaying.setTime(new Timestamp(Long.toString(date.getTime())date.getTime()));
+                    }
 
-                isNext = false;
-                isFirst = false;
-                isPrev = false;
+                    Log.d("msg", songPlaying.getTime());
+
+                    if (recievedThings) {
+
+                        MoodifyAPI moodifyAPI = ServiceGenerator.createService(MoodifyAPI.class);
+                        moodifyAPI.postSong(songPlaying, new Callback<SongPlaying>() {
+                            @Override
+                            public void success(SongPlaying songPlaying, Response response) {
+                                Log.d("response", response.getReason());
+                            }
+
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Log.d("response", "this guy");
+                                error.printStackTrace();
+                            }
+                        });
+                    }
+
+                    isNext = false;
+                    isFirst = false;
+                    isPrev = false;
+                }
 
                 break;
             case SKIP_NEXT:
@@ -338,46 +383,64 @@ public class MainActivity extends Activity implements
         super.onDestroy();
         Spotify.destroyPlayer(this);
         //un-register BroadcastReceiver
-        unregisterReceiver(myBroadcastReceiver);
+        //unregisterReceiver(myBroadcastReceiver);
     }
 
     public class MyBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             String result = intent.getStringExtra(EmpaticaService.EXTRA_KEY_OUT);
-            //textResult.setText(result);
+            stressLevel = Double.parseDouble(result);
+            moodChange();
         }
     }
 
     public void moodChange() {
 
-        if(stressLevel < 0.2) {
-            if(mood.equals("happy")) {
+        Log.e("msg", Double.toString(stressLevel));
+
+        if(stressLevel < 1) {
+            if(!mood.equals("happy")) {
+                recievedThings = true;
                 Toast.makeText(this, "Mood changed to calm", Toast.LENGTH_LONG).show();
                 v.vibrate(500);
                 iv.setImageResource(R.drawable.happy);
                 mood = "happy";
-                currentPlaylist = "1j96MGp5j4jRsgZp4vMxQG";
+                currentPlaylist = "4csYv6Cm7OI6VHJ1U7nJXz";
+                playlistUser = "spotify";
+                //smiley = happySmiley;
+                songPlaying.setPicture(happySmiley);
+                changedMood = true;
                 AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
             }
         }
-        else if(stressLevel < 0.5) {
-            if(mood.equals("neutral")) {
+        else if(stressLevel < 1.1) {
+            if(!mood.equals("neutral")) {
+                recievedThings = true;
                 Toast.makeText(this, "Mood changed to neutral", Toast.LENGTH_LONG).show();
                 v.vibrate(500);
                 iv.setImageResource(R.drawable.neutral);
                 mood = "neutral";
                 currentPlaylist = "65V6djkcVRyOStLd8nza8E";
+                playlistUser = "spotify";
+                smiley = neutralSmiley;
+                songPlaying.setPicture(neutralSmiley);
+                changedMood = true;
                 AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
             }
         }
         else {
-            if(mood.equals("sad")) {
+            if(!mood.equals("sad")) {
+                recievedThings = true;
                 Toast.makeText(this, "Mood changed to stressed", Toast.LENGTH_LONG).show();
                 v.vibrate(500);
                 iv.setImageResource(R.drawable.sad);
                 mood = "sad";
-                currentPlaylist = "7b9XqnXw5J47tmn0Y0IZeW";
+                currentPlaylist = "1YRQAGw7qVJCLxWFGDsS3l";
+                playlistUser = "spotify";
+                smiley = sadSmiley;
+                songPlaying.setPicture(sadSmiley);
+                changedMood = true;
                 AuthenticationClient.openLoginActivity(this, REQUEST_CODE, request);
             }
         }
